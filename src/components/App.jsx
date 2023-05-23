@@ -1,4 +1,3 @@
-import React, { Component } from "react";
 import { fetchImages } from "../services/api";
 import { Loader } from "./Loader/Loader";
 import { Searchbar } from "./Searchbar/Searchbar";
@@ -11,29 +10,19 @@ import {
   EmptyText,
   LoadMoreBtn,
 } from "./ImageGallery/ImageGallery.styled";
+import { useState, useEffect } from "react";
 
-export class App extends Component {
-  state = {
-    images: [],
-    page: 1,
-    loading: false,
-    error: null,
-    empty: false,
-    searchQuery: "",
-    total: 1,
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [empty, setEmpty] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [total, setTotal] = useState(1);
 
-  componentDidUpdate(prevProps, prevState) {
-    const { images } = this.state;
-    
-    if (
-      prevState.searchQuery !== this.state.searchQuery ||
-      prevState.page !== this.state.page
-    ) {
-      this.getPictures(this.state.searchQuery, this.state.page);
-    }
-
-    if (prevState.images !== images && images.length > 12) {
+  useEffect(() => {
+    if (images.length > 12) {
       const { height: cardHeight } = document
         .querySelector("ul")
         .firstElementChild.getBoundingClientRect();
@@ -43,68 +32,62 @@ export class App extends Component {
         behavior: "smooth",
       });
     }
-  }
-  getPictures = async (searchValue, page) => {
-    try {
-      this.setState({ loading: true });
-      const response = await fetchImages(searchValue, page);
-      
+  });
 
-      if (!response.hits.length) {
-        toast.error(`There are no images : ${searchValue}`);
-        return this.setState({ empty: true });
+  useEffect(() => {
+    if (searchQuery) getPictures();
+    async function getPictures() {
+      try {
+        setLoading(true);
+        const response = await fetchImages(searchQuery, page);
+
+        if (!response.hits.length) {
+          toast.error(`There are no images : ${searchQuery}`);
+          return setEmpty(true);
+        }
+        setImages((prevImg) => [...prevImg, ...response.hits]);
+        setTotal(response.total);
+        setEmpty(false);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
-      this.setState((prevState) => ({
-        images: [...prevState.images, ...response.hits],
-        page: prevState.page,
-        total: response.total,
-        empty: false,
-      }));
-    } catch (error) {
-      this.setState({ error: error.message });
-    } finally {
-      this.setState({ loading: false });
     }
+  }, [page, searchQuery]);
+
+  const onSearchQueryChange = (searchQuery) => {
+    setSearchQuery(searchQuery);
+    setImages([]);
+    setPage(1);
+    setTotal(1);
+    setLoading(false);
+    setError(null);
+    setEmpty(false);
+  };
+  const btnLoadMore = () => {
+    setPage((prevState) => prevState + 1);
   };
 
-  onSearchQueryChange = (searchQuery) => {
-    this.setState({
-      searchQuery,
-      images: [],
-      page: 1,
-      total: 1,
-      loading: false,
-      error: null,
-      empty: false,
-    });
-  };
-  btnLoadMore = () => {
-    this.setState((prevState) => ({ page: prevState.page + 1 }));
-  };
+  return (
+    <Container>
+      {loading && <Loader></Loader>}
+      <Searchbar onSubmit={onSearchQueryChange} />
+      {error && <p>Something wrong: ({error})</p>}
+      <ImageGallery images={images} />
+      {empty && (
+        <Empty>
+          <EmptyText> There are no images matching your query 😢</EmptyText>
+          <img src={catEmpty} alt="cat" width="300" />
+        </Empty>
+      )}
 
-  render() {
-    const { images, total, page, empty, loading } = this.state;
-
-    return (
-      <Container>
-        {loading && <Loader></Loader>}
-        <Searchbar onSubmit={this.onSearchQueryChange} />
-        <ImageGallery images={images} />
-        {empty && (
-          <Empty>
-            <EmptyText> There are no images matching your query 😢</EmptyText>
-            <img src={catEmpty} alt="cat" width="300" />
-          </Empty>
-        )}
-
-        {total / 12 > page && (
-          <LoadMoreBtn type="button" onClick={this.btnLoadMore}>
-            {" "}
-            Load More{" "}
-          </LoadMoreBtn>
-        )}
-        <ToastContainer autoClose={2000} />
-      </Container>
-    );
-  }
-}
+      {total / 12 > page && (
+        <LoadMoreBtn type="button" onClick={btnLoadMore}>
+          Load More
+        </LoadMoreBtn>
+      )}
+      <ToastContainer autoClose={2000} />
+    </Container>
+  );
+};

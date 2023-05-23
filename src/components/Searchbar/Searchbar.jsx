@@ -1,35 +1,41 @@
-import { Formik } from "formik";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Header, FormStyle, SearchInput, SearchBtn } from "./Searchbar.styled";
 import { FaSearchengin } from "react-icons/fa";
 import propTypes from "prop-types";
+import { useState } from "react";
 
 export const Searchbar = ({ onSubmit }) => {
-  const formSubmit = (value, actions) => {
-    if (value.searchValue.trim() === "") {
+  const [searchQuery, setSearchQuery] = useState("");
+  const onChangeQuery = (evt) => {
+    setSearchQuery(evt.target.value);
+  };
+
+  const formSubmit = (evt) => {
+    evt.preventDefault();
+    if (searchQuery.trim() === "") {
       toast.error("The search field cannot be empty");
       return;
     }
-    onSubmit(value.searchValue.trim());
-    actions.resetForm();
+    onSubmit(searchQuery.trim());
+    setSearchQuery("");
   };
 
   return (
     <Header>
-      <Formik initialValues={{ searchValue: "" }} onSubmit={formSubmit}>
-        <FormStyle>
-          <SearchInput
-            name="searchValue"
-            type="text"
-            autoFocus
-            placeholder="Enter your search query"
-          />
-          <SearchBtn type="submit">
-            <FaSearchengin />
-          </SearchBtn>
-        </FormStyle>
-      </Formik>
+      <FormStyle onSubmit={formSubmit}>
+        <SearchInput
+          name="searchValue"
+          type="text"
+          value={searchQuery}
+          autoFocus
+          placeholder="Enter your search query"
+          onChange={onChangeQuery}
+        />
+        <SearchBtn type="submit">
+          <FaSearchengin />
+        </SearchBtn>
+      </FormStyle>
     </Header>
   );
 };
